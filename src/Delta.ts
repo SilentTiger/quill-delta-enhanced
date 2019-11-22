@@ -167,6 +167,11 @@ class Delta {
   }
 
   slice(start: number = 0, end: number = Infinity): Delta {
+    const ops = this.sliceOps(start, end)
+    return new Delta(ops);
+  }
+
+  sliceOps(start: number = 0, end: number = Infinity): Op[] {
     const ops = [];
     const iter = Op.iterator(this.ops);
     let index = 0;
@@ -180,7 +185,7 @@ class Delta {
       }
       index += Op.length(nextOp);
     }
-    return new Delta(ops);
+    return ops
   }
 
   compose(other: Delta): Delta {
@@ -369,7 +374,7 @@ class Delta {
         return baseIndex + op.retain;
       } else if (op.delete || (op.retain && op.attributes)) {
         const length = (op.delete || op.retain) as number;
-        const slice = base.slice(baseIndex, baseIndex + length);
+        const slice = base.sliceOps(baseIndex, baseIndex + length);
         slice.forEach(baseOp => {
           if (op.delete) {
             inverted.push(baseOp);

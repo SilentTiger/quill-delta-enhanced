@@ -1,6 +1,6 @@
 {
   "name": "quill-delta-table",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Format for representing rich text documents and changes. And with table support.",
   "author": "SilentTiger<cia.fbi.007@hotmail.com>",
   "homepage": "https://github.com/SilentTiger/quill-delta-table",
