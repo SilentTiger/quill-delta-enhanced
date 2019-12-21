@@ -65,11 +65,12 @@ class Delta {
     let lastOp = this.ops[index - 1];
     newOp = extend(true, {}, newOp);
     if (typeof lastOp === 'object') {
+      // 如果最后的操作和新增的操作都是删除，就合并这两个操作
       if (
         typeof newOp.delete === 'number' &&
         typeof lastOp.delete === 'number'
       ) {
-        this.ops[index - 1] = { delete: lastOp.delete + newOp.delete };
+        lastOp.delete += newOp.delete;
         return this;
       }
       // Since it does not matter if we insert before or after deleting at the same index,
