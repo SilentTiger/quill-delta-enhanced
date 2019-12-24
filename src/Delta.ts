@@ -2,7 +2,7 @@ import equal from 'deep-equal';
 import extend from 'extend';
 import diff from 'fast-diff';
 import AttributeMap from './AttributeMap';
-import Op from './Op';
+import Op, { OpInsertDateType, OpDeltaType, OpRetainType } from './Op';
 
 const NULL_CHARACTER = String.fromCharCode(0); // Placeholder char for embed in diff()
 
@@ -12,17 +12,29 @@ class Delta {
 
   ops: Op[];
   constructor(ops?: Op[] | { ops: Op[] }) {
-    // Assume we are given a well formed ops
+    let inputOps: any[]
     if (Array.isArray(ops)) {
-      this.ops = ops;
+      inputOps = ops;
     } else if (ops != null && Array.isArray(ops.ops)) {
-      this.ops = ops.ops;
+      inputOps = ops.ops;
     } else {
-      this.ops = [];
+      inputOps = [];
     }
+
+    for (let index = 0; index < inputOps.length; index++) {
+      const op = inputOps[index] as Op;
+      if (
+        typeof op.insert === 'object' && Array.isArray(op.insert.ops)
+      ) {
+        op.insert = new Delta(op.insert.ops)
+      } else if (typeof op.retain === 'object' && Array.isArray(op.retain.ops)) {
+        op.retain = new Delta(op.retain.ops)
+      }
+    }
+    this.ops = inputOps
   }
 
-  insert(arg: string | object, attributes?: AttributeMap): this {
+  insert(arg: OpInsertDateType, attributes?: AttributeMap): this {
     const newOp: Op = {};
     if (typeof arg === 'string' && arg.length === 0) {
       return this;
@@ -38,15 +50,15 @@ class Delta {
     return this.push(newOp);
   }
 
-  delete(length: number): this {
+  delete(length: OpDeltaType): this {
     if (length <= 0) {
       return this;
     }
     return this.push({ delete: length });
   }
 
-  retain(length: number, attributes?: AttributeMap): this {
-    if (length <= 0) {
+  retain(length: OpRetainType, attributes?: AttributeMap): this {
+    if (typeof length === 'number' && length <= 0) {
       return this;
     }
     const newOp: Op = { retain: length };
@@ -194,6 +206,7 @@ class Delta {
     const otherIter = Op.iterator(other.ops);
     const ops = [];
     const firstOther = otherIter.peek();
+    // 先看合入的 delta 的第一条是不是仅仅要修改游标位置
     if (
       firstOther != null &&
       typeof firstOther.retain === 'number' &&
@@ -250,6 +263,45 @@ class Delta {
 
           // Other op should be delete, we could be an insert or retain
           // Insert + delete cancels out
+        } else if ( typeof otherOp.retain === 'object' ) {
+          // thisOp 分 retain 和 insert 两种情况
+          if (typeof thisOp.retain === 'number') {
+            const newOp: Op = { retain: otherOp.retain }
+            const attributes = AttributeMap.compose(
+              thisOp.attributes,
+              otherOp.attributes,
+              true
+            );
+            if (attributes) {
+              newOp.attributes = attributes;
+            }
+            delta.push(newOp);
+          } else if (typeof thisOp.retain === 'object') {
+            const newOp: Op = { retain: thisOp.retain.compose(otherOp.retain)}
+            const attributes = AttributeMap.compose(
+              thisOp.attributes,
+              otherOp.attributes,
+              false
+            );
+            if (attributes) {
+              newOp.attributes = attributes;
+            }
+            delta.push(newOp);
+          } else if (typeof thisOp.insert === 'object') {
+            const newOp: Op = { insert: thisOp.insert.compose(otherOp.retain)}
+            const attributes = AttributeMap.compose(
+              thisOp.attributes,
+              otherOp.attributes,
+              false
+            );
+            if (attributes) {
+              newOp.attributes = attributes;
+            }
+            delta.push(newOp);
+          } else {
+            // 如果进入这个分支，说明 thisOp.insert 是 string 或 数字，这时要和一个 delta 类型 retain Op 进行 compose 操作是非法的
+            console.trace('error compose')
+          }
         } else if (
           typeof otherOp.delete === 'number' &&
           typeof thisOp.retain === 'number'

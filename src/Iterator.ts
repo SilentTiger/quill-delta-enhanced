@@ -39,6 +39,8 @@ export default class Iterator {
         }
         if (typeof nextOp.retain === 'number') {
           retOp.retain = length;
+        } else if (typeof nextOp.retain === 'object') {
+          retOp.retain = nextOp.retain
         } else if (typeof nextOp.insert === 'string') {
           retOp.insert = nextOp.insert.substr(offset, length);
         } else {
@@ -69,7 +71,10 @@ export default class Iterator {
     if (this.ops[this.index]) {
       if (typeof this.ops[this.index].delete === 'number') {
         return 'delete';
-      } else if (typeof this.ops[this.index].retain === 'number') {
+      } else if (
+        typeof this.ops[this.index].retain === 'number' ||
+        typeof this.ops[this.index].retain === 'object'
+      ) {
         return 'retain';
       } else {
         return 'insert';
