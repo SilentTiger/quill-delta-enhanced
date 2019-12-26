@@ -36,4 +36,12 @@ describe('compose()', function () {
     var res = a.compose(b)
     expect(res).toEqual(expected)
   })
+
+  it('retain delta + retain delta remove', function () {
+    var a = new Delta().retain(new Delta().insert('a')).insert('aa')
+    var b = new Delta().retain(new Delta().delete(1))
+    var expected = new Delta().retain(1).insert('aa')
+    var res = a.compose(b)
+    expect(res).toEqual(expected)
+  })
 })

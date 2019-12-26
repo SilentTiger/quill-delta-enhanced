@@ -277,7 +277,11 @@ class Delta {
             }
             delta.push(newOp);
           } else if (typeof thisOp.retain === 'object') {
-            const newOp: Op = { retain: thisOp.retain.compose(otherOp.retain)}
+            let retainData: Delta | number = thisOp.retain.compose(otherOp.retain)
+            if (retainData.length() === 0) {
+              retainData = 1
+            }
+            const newOp: Op = { retain: retainData}
             const attributes = AttributeMap.compose(
               thisOp.attributes,
               otherOp.attributes,
@@ -288,7 +292,11 @@ class Delta {
             }
             delta.push(newOp);
           } else if (typeof thisOp.insert === 'object') {
-            const newOp: Op = { insert: thisOp.insert.compose(otherOp.retain)}
+            let retainData: Delta | number = thisOp.insert.compose(otherOp.retain)
+            if (retainData.length() === 0) {
+              retainData = 1
+            }
+            const newOp: Op = { insert: retainData}
             const attributes = AttributeMap.compose(
               thisOp.attributes,
               otherOp.attributes,
