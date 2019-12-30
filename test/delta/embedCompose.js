@@ -31,9 +31,9 @@ describe('compose()', function () {
   })
 
   it('insert number 2 + retain delta', function () { 
-    var a = new Delta().insert(2)
+    var a = new Delta().insert(2, {attr: 'attr'})
     var b = new Delta().retain(new Delta().insert('b'))
-    var expected = new Delta().insert(new Delta().insert('b')).insert(1)
+    var expected = new Delta().insert(new Delta().insert('b'), {attr: 'attr'}).insert(1, {attr: 'attr'})
     var res = a.compose(b)
     expect(res).toEqual(expected)
   })

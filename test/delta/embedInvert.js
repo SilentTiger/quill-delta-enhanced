@@ -16,8 +16,13 @@ describe('invert()', function () {
 
   it('number + delta', function () {
     var a = new Delta().insert(1, { attr: 'attr' })
-    var b = new Delta().retain(new Delta().insert('b'))
-    var i = getInvertRes(a, b)
+    var b = new Delta().retain(new Delta().insert('b'), { attr: 'b' })
+    expect(a).toEqual(getInvertRes(a, b))
+  })
+
+  it('delta + delta', function () {
+    var a = new Delta().insert(new Delta().insert('a'), { attr: 'attrA' })
+    var b = new Delta().retain(new Delta().delete(1).insert('b'), { attr: 'attrB' })
     expect(a).toEqual(getInvertRes(a, b))
   })
 })
