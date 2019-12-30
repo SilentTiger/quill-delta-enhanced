@@ -22,6 +22,22 @@ describe('compose()', function () {
     expect(a.compose(b)).toEqual(expected)
   })
 
+  it('insert number + retain delta', function () {
+    var a = new Delta().insert(1)
+    var b = new Delta().retain(new Delta().insert('b'))
+    var expected = new Delta().insert(new Delta().insert('b'))
+    var res = a.compose(b)
+    expect(res).toEqual(expected)
+  })
+
+  it('insert number 2 + retain delta', function () { 
+    var a = new Delta().insert(2)
+    var b = new Delta().retain(new Delta().insert('b'))
+    var expected = new Delta().insert(new Delta().insert('b')).insert(1)
+    var res = a.compose(b)
+    expect(res).toEqual(expected)
+  })
+
   it('retain number + retain delta', function () {
     var a = new Delta().retain(2, { a: 'a' }).insert('a')
     var b = new Delta().retain(new Delta().insert('b'))

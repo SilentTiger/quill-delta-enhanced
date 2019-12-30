@@ -127,7 +127,7 @@ class Delta {
 
   chop(): this {
     const lastOp = this.ops[this.ops.length - 1];
-    if (lastOp && lastOp.retain && !lastOp.attributes) {
+    if (lastOp && lastOp.retain && typeof lastOp.retain === 'number' && !lastOp.attributes) {
       this.ops.pop();
     }
     return this;
@@ -271,43 +271,61 @@ class Delta {
               thisOp.attributes,
               otherOp.attributes,
               true
-            );
+            )
             if (attributes) {
-              newOp.attributes = attributes;
+              newOp.attributes = attributes
             }
-            delta.push(newOp);
+            delta.push(newOp)
           } else if (typeof thisOp.retain === 'object') {
             let retainData: Delta | number = thisOp.retain.compose(otherOp.retain)
             if (retainData.length() === 0) {
               retainData = 1
             }
-            const newOp: Op = { retain: retainData}
+            const newOp: Op = { retain: retainData }
             const attributes = AttributeMap.compose(
               thisOp.attributes,
               otherOp.attributes,
               false
-            );
+            )
             if (attributes) {
-              newOp.attributes = attributes;
+              newOp.attributes = attributes
             }
-            delta.push(newOp);
+            delta.push(newOp)
           } else if (typeof thisOp.insert === 'object') {
             let retainData: Delta | number = thisOp.insert.compose(otherOp.retain)
             if (retainData.length() === 0) {
               retainData = 1
             }
-            const newOp: Op = { insert: retainData}
+            const newOp: Op = { insert: retainData }
             const attributes = AttributeMap.compose(
               thisOp.attributes,
               otherOp.attributes,
               false
-            );
+            )
             if (attributes) {
-              newOp.attributes = attributes;
+              newOp.attributes = attributes
             }
-            delta.push(newOp);
+            delta.push(newOp)
+          } else if (typeof thisOp.insert === 'number') { 
+            const newOp: Op = { insert: otherOp.retain }
+            const attributes = AttributeMap.compose(
+              thisOp.attributes,
+              otherOp.attributes,
+              true
+            )
+            if (attributes) {
+              newOp.attributes = attributes
+            }
+            delta.push(newOp)
+            if (thisOp.insert > 1) {
+              const leftOp: Op = { insert: thisOp.insert - 1 }
+              if (thisOp.attributes) {
+                leftOp.attributes = thisOp.attributes
+              }
+              delta.push(leftOp)
+            }
           } else {
-            // 如果进入这个分支，说明 thisOp.insert 是 string 或 数字，这时要和一个 delta 类型 retain Op 进行 compose 操作是非法的
+            // 如果进入这个分支，说明 thisOp.insert 是 string，这时要和一个 delta 类型 retain Op 进行 compose 操作是非法的
             console.trace('error compose')
           }
         } else if (
@@ -426,14 +444,16 @@ class Delta {
   }
 
   invert(base: Delta): Delta {
-    const inverted = new Delta();
-    this.reduce((baseIndex, op) => {
+    let inverted = new Delta();
+    let baseIndex = 0
+    for (let index = 0; index < this.ops.length; index++) {
+      const op = this.ops[index];
       if (op.insert) {
         inverted.delete(Op.length(op));
-      } else if (op.retain && op.attributes == null) {
+      } else if (op.retain && op.attributes == null && typeof op.retain === 'number') {
         inverted.retain(op.retain);
-        return baseIndex + op.retain;
-      } else if (op.delete || (op.retain && op.attributes)) {
+        baseIndex += op.retain;
+      } else if (op.delete || (typeof op.retain === 'number' && op.attributes)) {
         const length = (op.delete || op.retain) as number;
         const slice = base.sliceOps(baseIndex, baseIndex + length);
         slice.forEach(baseOp => {
@@ -446,10 +466,35 @@ class Delta {
             );
           }
         });
-        return baseIndex + length;
+        baseIndex += length;
+      } else if (typeof op.retain === 'object') {
+        const retainData = op.retain
+        const length = 1
+        const slice = base.sliceOps(baseIndex, baseIndex + length);
+        slice.forEach(baseOp => {
+          // 还原 attributes
+          const invertedAttr = op.attributes ? AttributeMap.invert(op.attributes, baseOp.attributes) : null
+          // 还原内容，baseOp 的内容是 delta 或 number，这里 baseOp 只能是 insert，如果是 retain 就报错
+          // 这里 baseOp 不可能是 insert string
+          if (typeof baseOp.insert === 'number') {
+            const invertOp: Op = { retain: new Delta().delete(retainData.length()) }
+            if (invertedAttr) {
+              invertOp.attributes = invertedAttr
+            }
+            inverted = inverted.concat(new Delta([invertOp]))
+          } else if (typeof baseOp.insert === 'object') {
+            const invertOp: Op = { retain: retainData.invert(baseOp.insert) }
+            if (invertedAttr) {
+              invertOp.attributes = invertedAttr
+            }
+            inverted = inverted.concat(new Delta([invertOp]))
+          } else {
+            console.trace('can not invert retain', baseOp, op)
+          }
+        });
+        baseIndex += length;
       }
-      return baseIndex;
-    }, 0);
+    }
     return inverted.chop();
   }
 
