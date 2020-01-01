@@ -405,44 +405,6 @@ class Delta {
     return retDelta.chop();
   }
 
-  eachLine(
-    predicate: (
-      line: Delta,
-      attributes: AttributeMap,
-      index: number,
-    ) => boolean | void,
-    newline: string = '\n',
-  ): void {
-    const iter = Op.iterator(this.ops);
-    let line = new Delta();
-    let i = 0;
-    while (iter.hasNext()) {
-      if (iter.peekType() !== 'insert') {
-        return;
-      }
-      const thisOp = iter.peek();
-      const start = Op.length(thisOp) - iter.peekLength();
-      const index =
-        typeof thisOp.insert === 'string'
-          ? thisOp.insert.indexOf(newline, start) - start
-          : -1;
-      if (index < 0) {
-        line.push(iter.next());
-      } else if (index > 0) {
-        line.push(iter.next(index));
-      } else {
-        if (predicate(line, iter.next(1).attributes || {}, i) === false) {
-          return;
-        }
-        i += 1;
-        line = new Delta();
-      }
-    }
-    if (line.length() > 0) {
-      predicate(line, {}, i);
-    }
-  }
-
   invert(base: Delta): Delta {
     let inverted = new Delta();
     let baseIndex = 0
