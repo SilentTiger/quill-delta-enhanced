@@ -43,6 +43,8 @@ export default class Iterator {
           retOp.retain = nextOp.retain
         } else if (typeof nextOp.insert === 'string') {
           retOp.insert = nextOp.insert.substr(offset, length);
+        } else if (typeof nextOp.insert === 'number') {
+          retOp.insert = length
         } else {
           // offset should === 0, length should === 1
           retOp.insert = nextOp.insert;

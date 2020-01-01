@@ -131,10 +131,10 @@ describe('compose()', function() {
     expect(a.compose(b)).toEqual(expected);
   });
 
-  it('remove all embed attributes', function() {
+  it('remove all embed attributes', function () {
     var a = new Delta().insert(2, { bold: true });
     var b = new Delta().retain(1, { bold: null });
-    var expected = new Delta().insert(2);
+    var expected = new Delta().insert(1).insert(1, { bold: true });
     expect(a.compose(b)).toEqual(expected);
   });
 

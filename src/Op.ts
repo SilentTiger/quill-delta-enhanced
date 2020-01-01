@@ -25,8 +25,14 @@ namespace Op {
       return op.delete;
     } else if (typeof op.retain === 'number') {
       return op.retain;
-    } else {
-      return typeof op.insert === 'string' ? op.insert.length : 1;
+    } else if (typeof op.retain === 'object') { 
+      return 1
+    } else if (typeof op.insert === 'string') {
+      return op.insert.length
+    } else if (typeof op.insert === 'number') {
+      return op.insert
+    } {
+      return 1;
     }
   }
 }

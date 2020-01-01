@@ -16,7 +16,7 @@ describe('Op', function() {
     });
 
     it('insert embed', function() {
-      expect(Op.length({ insert: 2 })).toEqual(1);
+      expect(Op.length({ insert: 2 })).toEqual(2);
     });
   });
 
@@ -45,7 +45,7 @@ describe('Op', function() {
       iter.next();
       expect(iter.peekLength()).toEqual(3);
       iter.next();
-      expect(iter.peekLength()).toEqual(1);
+      expect(iter.peekLength()).toEqual(2);
       iter.next();
       expect(iter.peekLength()).toEqual(4);
     });

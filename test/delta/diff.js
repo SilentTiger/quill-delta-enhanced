@@ -50,7 +50,7 @@ describe('diff()', function() {
   it('embed integer mismatch', function() {
     var a = new Delta().insert(1);
     var b = new Delta().insert(2);
-    var expected = new Delta().delete(1).insert(2);
+    var expected = new Delta().insert(1);
     expect(a.diff(b)).toEqual(expected);
   });
 
