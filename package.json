@@ -6,21 +6,21 @@
   "homepage": "https://github.com/SilentTiger/quill-delta-table",
   "main": "dist/Delta.js",
   "dependencies": {
-    "deep-equal": "^1.1.0",
+    "deep-equal": "^2.0.1",
     "extend": "^3.0.2",
     "fast-diff": "1.2.0"
   },
   "devDependencies": {
     "@types/deep-equal": "^1.0.1",
     "@types/extend": "^3.0.1",
-    "coveralls": "^3.0.7",
+    "coveralls": "^3.0.9",
     "istanbul": "~0.4.5",
     "jasmine": "^3.5.0",
-    "prettier": "^1.18.2",
-    "tslint": "^5.20.0",
+    "prettier": "^1.19.1",
+    "tslint": "^5.20.1",
     "tslint-config-prettier": "^1.18.0",
-    "tslint-plugin-prettier": "^2.0.1",
-    "typescript": "^3.6.4"
+    "tslint-plugin-prettier": "^2.1.0",
+    "typescript": "^3.7.4"
   },
   "files": [
     "tsconfig.json",
