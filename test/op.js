@@ -84,7 +84,7 @@ describe('Op', function() {
       expect(iter.next()).toEqual({ retain: Infinity });
     });
 
-    it('next(length)', function() {
+    it('next(length)', function () {
       var iter = Op.iterator(this.delta.ops);
       expect(iter.next(2)).toEqual({
         insert: 'He',
@@ -96,6 +96,14 @@ describe('Op', function() {
       });
       expect(iter.next(1)).toEqual({ retain: 1 });
       expect(iter.next(2)).toEqual({ retain: 2 });
+      expect(iter.next(1)).toEqual({ insert: 1, attributes: { src: 'http://quilljs.com/' } })
+      expect(iter.next(1)).toEqual({ insert: 1, attributes: { src: 'http://quilljs.com/' } })
+
+      var a = new Delta().insert(3).insert('abc')
+      var iterA = Op.iterator(a.ops)
+      expect(iterA.next(1)).toEqual({ insert: 1 })
+      expect(iterA.next(2)).toEqual({ insert: 2 })
+      expect(iterA.next(2)).toEqual({ insert: 'ab' })
     });
 
     it('rest()', function() {
