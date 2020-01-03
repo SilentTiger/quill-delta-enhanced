@@ -215,4 +215,25 @@ describe('compose()', function() {
       .insert('F');
     expect(a.compose(b)).toEqual(expected);
   });
+
+  it('insert number merge', function () {
+    var a = new Delta().insert(1)
+    var b = new Delta().insert(1)
+    var expected = new Delta().insert(2)
+    expect(a.compose(b)).toEqual(expected)
+  })
+
+  it('insert 2 + retain delta', function () {
+    var a = new Delta().insert(2)
+    var b = new Delta().retain(new Delta().insert('b'))
+    var expected = new Delta().insert(new Delta().insert('b')).insert(1)
+    expect(a.compose(b)).toEqual(expected)
+  })
+
+  it('insert 3 + retain delta', function () {
+    var a = new Delta().insert(3)
+    var b = new Delta().retain(2).retain(new Delta().insert('b'))
+    var expected = new Delta().insert(2).insert(new Delta().insert('b'))
+    expect(a.compose(b)).toEqual(expected)
+  })
 });

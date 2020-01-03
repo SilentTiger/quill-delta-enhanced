@@ -50,35 +50,21 @@ describe('diff()', function() {
   it('embed integer mismatch', function() {
     var a = new Delta().insert(1);
     var b = new Delta().insert(2);
-    var expected = new Delta().insert(1);
+    var expected = new Delta().retain(1).insert(1);
     expect(a.diff(b)).toEqual(expected);
   });
 
   it('embed object match', function() {
-    var a = new Delta().insert({ image: 'http://quilljs.com' });
-    var b = new Delta().insert({ image: 'http://quilljs.com' });
+    var a = new Delta().insert(new Delta().insert('a'));
+    var b = new Delta().insert(new Delta().insert('a'));
     var expected = new Delta();
     expect(a.diff(b)).toEqual(expected);
   });
 
   it('embed object mismatch', function() {
-    var a = new Delta().insert({
-      image: 'http://quilljs.com',
-      alt: 'Overwrite',
-    });
-    var b = new Delta().insert({ image: 'http://quilljs.com' });
-    var expected = new Delta()
-      .insert({ image: 'http://quilljs.com' })
-      .delete(1);
-    expect(a.diff(b)).toEqual(expected);
-  });
-
-  it('embed object change', function() {
-    var embed = { image: 'http://quilljs.com' };
-    var a = new Delta().insert(embed);
-    embed.image = 'http://github.com';
-    var b = new Delta().insert(embed);
-    var expected = new Delta().insert({ image: 'http://github.com' }).delete(1);
+    var a = new Delta().insert(new Delta().insert('a'));
+    var b = new Delta().insert(new Delta().insert('ab'));
+    var expected = new Delta().retain(new Delta().retain(1).insert('b'))
     expect(a.diff(b)).toEqual(expected);
   });
 

@@ -106,6 +106,12 @@ class Delta {
           }
           return this;
         } else if (
+          typeof newOp.insert === 'number' &&
+          typeof lastOp.insert === 'number'
+        ) { 
+          lastOp.insert += newOp.insert;
+          return this;
+        } else if (
           typeof newOp.retain === 'number' &&
           typeof lastOp.retain === 'number'
         ) {
@@ -317,13 +323,6 @@ class Delta {
               newOp.attributes = attributes
             }
             delta.push(newOp)
-            if (thisOp.insert > 1) {
-              const leftOp: Op = { insert: thisOp.insert - 1 }
-              if (thisOp.attributes) {
-                leftOp.attributes = thisOp.attributes
-              }
-              delta.push(leftOp)
-            }
           } else {
             // 如果进入这个分支，说明 thisOp.insert 是 string，这时要和一个 delta 类型 retain Op 进行 compose 操作是非法的
             console.trace('error compose')
@@ -356,7 +355,13 @@ class Delta {
       return delta
         .map(op => {
           if (op.insert != null) {
-            return typeof op.insert === 'string' ? op.insert : NULL_CHARACTER;
+            if (typeof op.insert === 'string') {
+              return op.insert
+            } else if (typeof op.insert === 'number') {
+              return Array.apply(null, Array(op.insert)).map(() => { return NULL_CHARACTER }).join('')
+            } else {
+              return NULL_CHARACTER
+            }
           }
           const prep = delta === other ? 'on' : 'with';
           throw new Error('diff() called ' + prep + ' non-document');
@@ -387,14 +392,27 @@ class Delta {
               otherIter.peekLength(),
               length,
             );
+            // 如果进入这个分支，那么thisOp 和 otherOp 都有可能是 number、delta 中的某一种
+            // 简单排列组合有 4 种情况
             const thisOp = thisIter.next(opLength);
             const otherOp = otherIter.next(opLength);
             if (equal(thisOp.insert, otherOp.insert)) {
+              // 如果 equal 说明都是 number 或都是 delta 且 delta 内容完全相同
               retDelta.retain(
                 opLength,
                 AttributeMap.diff(thisOp.attributes, otherOp.attributes),
               );
+            } else if (
+              typeof thisOp.insert === 'object' &&
+              typeof otherOp.insert === 'object'
+            ) {
+              // 如果两个都是 delta 且内容不同
+              retDelta.retain(
+                thisOp.insert.diff(otherOp.insert),
+                AttributeMap.diff(thisOp.attributes, otherOp.attributes)
+              )
             } else {
+              // 如果一个是 number 另一个是 delta
               retDelta.push(otherOp).delete(opLength);
             }
             break;
