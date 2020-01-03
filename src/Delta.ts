@@ -485,19 +485,38 @@ class Delta {
         const otherOp = otherIter.next(length);
         if (thisOp.delete) {
           // Our delete either makes their delete redundant or removes their retain
-          continue;
+          continue
         } else if (otherOp.delete) {
-          delta.push(otherOp);
+          delta.push(otherOp)
         } else {
           // We retain either their retain or insert
-          delta.retain(
-            length,
-            AttributeMap.transform(
-              thisOp.attributes,
-              otherOp.attributes,
-              priority,
-            ),
-          );
+          const retainAttr = AttributeMap.transform(
+            thisOp.attributes,
+            otherOp.attributes,
+            priority,
+          )
+          if (
+            typeof thisOp.retain === 'number' ||
+            (
+              typeof otherOp.insert === 'number' ||
+              typeof otherOp.retain === 'number'
+            )
+          ) {
+            let retainData: Delta | number = length
+            if (typeof otherOp.retain === 'object') {
+              retainData = otherOp.retain
+            }
+            delta.retain(
+              retainData,
+              retainAttr,
+            )
+          } else {
+            const otherData: Delta = (otherOp.insert ?? otherOp.retain) as Delta
+            delta.retain(
+              (thisOp.retain as Delta).transform(otherData, priority),
+              retainAttr
+            )
+          }
         }
       }
     }
