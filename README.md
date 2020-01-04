@@ -69,10 +69,10 @@ This type of operation will no longer be supported in quill-delta-enhanced, that
 However, as mentioned above, I have modified the meaning of the insert number operation, so insert object type operations can be replaced with insert number, such as:
 
 ```javascript
-// 原来的写法
+// used before
 var insertImage = new Delta().insert({src: 'http://xxxx.xx/xx.jpg'})
 
-// 修改后的写法
+// now
 var insertImage = new Delta().insert(1, {src: 'http://xxxx.xx/xx.jpg'})
 // You can even insert 5 pictures in a row
 var insertFiveImages = new Delta().insert(5, {src: 'http://xxxx.xx/xx.jpg'})

@@ -9,7 +9,7 @@
 quill-delta 基本上只能用来管理扁平的文档数据，对于层级复杂的文档内容则无能为力，而像 Word 就可以在文档中嵌入表格和文本框，且表格和文本框中又可以再嵌入结构复杂的文档内容。为了让 quill-delta 也可以实现对复杂嵌套数据的管理，就有了 quill-delta-enhanced。
 
 ## 变更内容
-### 扩展 insert Operator
+### 扩展 insert 操作
 quill-delta 原有的 insert 操作可以插入 string、number、object 三种类型的数据，在此基础上，添加了 delta 类型，比如：
 ```javascript
 var embedContent = new Delta().insert('embed')
@@ -17,7 +17,7 @@ var doc = new Delta().insert(embedContent)
 ```
 无论 embedContent 的内容多么复杂，对 doc 来说，插入的 embedContent 长度始终为 1。
 
-### 扩展 retain Operator
+### 扩展 retain 操作
 quill-delta 原有的 retain 操作只能是 number 类型，在此基础上，添加了 delta 类型，比如：
 ```javascript
 var embedContent = new Delta().insert('embed')

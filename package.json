@@ -1,9 +1,9 @@
 {
-  "name": "quill-delta-table",
-  "version": "0.0.2",
-  "description": "Format for representing rich text documents and changes. And with table support.",
+  "name": "quill-delta-enhanced",
+  "version": "0.0.1",
+  "description": "Format for representing rich text documents and changes. And with DELTA EMBED support.",
   "author": "SilentTiger<cia.fbi.007@hotmail.com>",
-  "homepage": "https://github.com/SilentTiger/quill-delta-table",
+  "homepage": "https://github.com/SilentTiger/quill-delta-enhanced",
   "main": "dist/Delta.js",
   "dependencies": {
     "deep-equal": "^2.0.1",
@@ -42,16 +42,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/SilentTiger/quill-delta-table"
+    "url": "https://github.com/SilentTiger/quill-delta-enhanced"
   },
   "bugs": {
-    "url": "https://github.com/SilentTiger/quill-delta-table/issues"
+    "url": "https://github.com/SilentTiger/quill-delta-enhanced/issues"
   },
   "keywords": [
     "rich text",
     "ot",
     "operational transform",
-    "delta",
-    "table"
+    "delta"
   ]
 }
