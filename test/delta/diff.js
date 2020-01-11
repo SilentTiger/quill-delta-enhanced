@@ -143,4 +143,11 @@ describe('diff()', function() {
       a.diff(b);
     }).toThrow(new Error('diff() called on non-document'));
   });
+
+  it('diff delta', function () {
+    var a = new Delta().insert(new Delta().insert('a'))
+    var b = new Delta().insert(new Delta().insert('b')).insert(new Delta().insert('a'))
+    var expected = new Delta().retain(new Delta().insert('b').delete(1)).insert(new Delta().insert('a'))
+    expect(a.diff(b)).toEqual(expected)
+  })
 });
