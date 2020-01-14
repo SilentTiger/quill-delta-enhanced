@@ -1,6 +1,6 @@
 import equal from 'deep-equal';
 import extend from 'extend';
-import diff from 'fast-diff';
+import { diff, CursorInfo, DiffOp } from './diff';
 import AttributeMap from './AttributeMap';
 import Op, { OpInsertDateType, OpDeltaType, OpRetainType } from './Op';
 
@@ -347,7 +347,7 @@ class Delta {
     return delta;
   }
 
-  diff(other: Delta, cursor?: number | diff.CursorInfo): Delta {
+  diff(other: Delta, cursor?: number | CursorInfo): Delta {
     if (this.ops === other.ops) {
       return new Delta();
     }
@@ -377,16 +377,16 @@ class Delta {
       while (length > 0) {
         let opLength = 0;
         switch (component[0]) {
-          case diff.INSERT:
+          case DiffOp.DIFF_INSERT:
             opLength = Math.min(otherIter.peekLength(), length);
             retDelta.push(otherIter.next(opLength));
             break;
-          case diff.DELETE:
+          case DiffOp.DIFF_DELETE:
             opLength = Math.min(length, thisIter.peekLength());
             thisIter.next(opLength);
             retDelta.delete(opLength);
             break;
-          case diff.EQUAL:
+          case DiffOp.DIFF_EQUAL:
             opLength = Math.min(
               thisIter.peekLength(),
               otherIter.peekLength(),

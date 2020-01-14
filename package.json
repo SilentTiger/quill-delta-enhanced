@@ -7,8 +7,7 @@
   "main": "dist/Delta.js",
   "dependencies": {
     "deep-equal": "^2.0.1",
-    "extend": "^3.0.2",
-    "fast-diff": "1.2.0"
+    "extend": "^3.0.2"
   },
   "devDependencies": {
     "@types/deep-equal": "^1.0.1",
