@@ -23,6 +23,7 @@
  * limitations under the License.
  */
 
+import toArray from 'lodash/toArray'
 
 /**
  * The data structure representing a diff is an array of tuples:
@@ -35,7 +36,8 @@ export enum DiffOp {
   DIFF_EQUAL = 0,
 }
 
-type IDiff = [DiffOp, string]
+type Sequence = Array<String | number>
+type IDiff = [DiffOp, Sequence]
 export interface CursorInfo {
   oldRange: { index: number; length: number };
   newRange: { index: number; length: number };
@@ -50,10 +52,10 @@ type CursorPos = number | CursorInfo
  * @param {Int|Object} [cursor_pos] Edit position in text1 or object with more info
  * @return {Array} Array of diff tuples.
  */
-function diff_main(text1: string, text2: string, cursor_pos?: CursorPos, _fix_unicode: boolean = false): IDiff[] {
+function diff_main(text1: Sequence, text2: Sequence, cursor_pos?: CursorPos, _fix_unicode: boolean = false): IDiff[] {
   // Check for equality
-  if (text1 === text2) {
-    if (text1) {
+  if (isSequenceEqual(text1, text2)) {
+    if (text1.length > 0) {
       return [[DiffOp.DIFF_EQUAL, text1]]
     }
     return []
@@ -61,31 +63,31 @@ function diff_main(text1: string, text2: string, cursor_pos?: CursorPos, _fix_un
 
   if (cursor_pos != null) {
     var editDiff = find_cursor_edit_diff(text1, text2, cursor_pos)
-    if (editDiff) {
+    if (editDiff && editDiff.length > 0) {
       return editDiff
     }
   }
 
   // Trim off common prefix (speedup).
   var commonLength = diff_commonPrefix(text1, text2)
-  var commonPrefix = text1.substring(0, commonLength)
-  text1 = text1.substring(commonLength)
-  text2 = text2.substring(commonLength)
+  var commonPrefix = text1.slice(0, commonLength)
+  text1 = text1.slice(commonLength)
+  text2 = text2.slice(commonLength)
 
   // Trim off common suffix (speedup).
   commonLength = diff_commonSuffix(text1, text2)
-  var commonSuffix = text1.substring(text1.length - commonLength)
-  text1 = text1.substring(0, text1.length - commonLength)
-  text2 = text2.substring(0, text2.length - commonLength)
+  var commonSuffix = text1.slice(text1.length - commonLength)
+  text1 = text1.slice(0, text1.length - commonLength)
+  text2 = text2.slice(0, text2.length - commonLength)
 
   // Compute the diff on the middle block.
   var diffs = diff_compute_(text1, text2)
 
   // Restore the prefix and suffix.
-  if (commonPrefix) {
+  if (commonPrefix.length > 0) {
     diffs.unshift([DiffOp.DIFF_EQUAL, commonPrefix])
   }
-  if (commonSuffix) {
+  if (commonSuffix.length > 0) {
     diffs.push([DiffOp.DIFF_EQUAL, commonSuffix])
   }
   diff_cleanupMerge(diffs, _fix_unicode)
@@ -100,28 +102,28 @@ function diff_main(text1: string, text2: string, cursor_pos?: CursorPos, _fix_un
  * @param {string} text2 New string to be diffed.
  * @return {Array} Array of diff tuples.
  */
-function diff_compute_(text1: string, text2: string): IDiff[] {
+function diff_compute_(text1: Sequence, text2: Sequence): IDiff[] {
   var diffs: IDiff[]
 
-  if (!text1) {
+  if (text1.length === 0) {
     // Just add some text (speedup).
     return [[DiffOp.DIFF_INSERT, text2]]
   }
 
-  if (!text2) {
+  if (text2.length === 0) {
     // Just delete some text (speedup).
     return [[DiffOp.DIFF_DELETE, text1]]
   }
 
   var longText = text1.length > text2.length ? text1 : text2
   var shortText = text1.length > text2.length ? text2 : text1
-  var i = longText.indexOf(shortText)
+  var i = indexOfSequence(longText, shortText)
   if (i !== -1) {
     // Shorter text is inside the longer text (speedup).
     diffs = [
-      [DiffOp.DIFF_INSERT, longText.substring(0, i)],
+      [DiffOp.DIFF_INSERT, longText.slice(0, i)],
       [DiffOp.DIFF_EQUAL, shortText],
-      [DiffOp.DIFF_INSERT, longText.substring(i + shortText.length)]
+      [DiffOp.DIFF_INSERT, longText.slice(i + shortText.length)]
     ]
     // Swap insertions for deletions if diff is reversed.
     if (text1.length > text2.length) {
@@ -138,7 +140,7 @@ function diff_compute_(text1: string, text2: string): IDiff[] {
 
   // Check to see if the problem can be split in two.
   var hm = diff_halfMatch_(text1, text2)
-  if (hm) {
+  if (hm && hm.length > 0) {
     // A half-match was found, sort out the return data.
     var text1_a = hm[0]
     var text1_b = hm[1]
@@ -165,7 +167,7 @@ function diff_compute_(text1: string, text2: string): IDiff[] {
  * @return {Array} Array of diff tuples.
  * @private
  */
-function diff_bisect_(text1: string, text2: string): IDiff[] {
+function diff_bisect_(text1: Sequence, text2: Sequence): IDiff[] {
   // Cache the text lengths to prevent multiple calls.
   var text1_length = text1.length
   var text2_length = text2.length
@@ -205,7 +207,7 @@ function diff_bisect_(text1: string, text2: string): IDiff[] {
       var y1 = x1 - k1
       while (
         x1 < text1_length && y1 < text2_length &&
-        text1.charAt(x1) === text2.charAt(y1)
+        text1[x1] === text2[y1]
       ) {
         x1++
         y1++
@@ -242,7 +244,7 @@ function diff_bisect_(text1: string, text2: string): IDiff[] {
       var y2 = x2 - k2
       while (
         x2 < text1_length && y2 < text2_length &&
-        text1.charAt(text1_length - x2 - 1) === text2.charAt(text2_length - y2 - 1)
+        text1[text1_length - x2 - 1] === text2[text2_length - y2 - 1]
       ) {
         x2++
         y2++
@@ -284,11 +286,11 @@ function diff_bisect_(text1: string, text2: string): IDiff[] {
  * @param {number} y Index of split point in text2.
  * @return {Array} Array of diff tuples.
  */
-function diff_bisectSplit_(text1: string, text2: string, x: number, y: number): IDiff[] {
-  var text1a = text1.substring(0, x)
-  var text2a = text2.substring(0, y)
-  var text1b = text1.substring(x)
-  var text2b = text2.substring(y)
+function diff_bisectSplit_(text1: Sequence, text2: Sequence, x: number, y: number): IDiff[] {
+  var text1a = text1.slice(0, x)
+  var text2a = text2.slice(0, y)
+  var text1b = text1.slice(x)
+  var text2b = text2.slice(y)
 
   // Compute both diffs serially.
   var diffs = diff_main(text1a, text2a)
@@ -305,9 +307,9 @@ function diff_bisectSplit_(text1: string, text2: string, x: number, y: number): 
  * @return {number} The number of characters common to the start of each
  *     string.
  */
-function diff_commonPrefix(text1: string, text2: string): number {
+function diff_commonPrefix(text1: Sequence, text2: Sequence): number {
   // Quick check for common null cases.
-  if (!text1 || !text2 || text1.charAt(0) !== text2.charAt(0)) {
+  if (text1.length === 0 || text2.length === 0 || text1[0] !== text2[0]) {
     return 0
   }
   // Binary search.
@@ -318,8 +320,10 @@ function diff_commonPrefix(text1: string, text2: string): number {
   var pointerStart = 0
   while (pointerMin < pointerMid) {
     if (
-      text1.substring(pointerStart, pointerMid) ==
-      text2.substring(pointerStart, pointerMid)
+      isSequenceEqual(
+        text1.slice(pointerStart, pointerMid),
+        text2.slice(pointerStart, pointerMid)
+      )
     ) {
       pointerMin = pointerMid
       pointerStart = pointerMin
@@ -329,7 +333,8 @@ function diff_commonPrefix(text1: string, text2: string): number {
     pointerMid = Math.floor((pointerMax - pointerMin) / 2 + pointerMin)
   }
 
-  if (is_surrogate_pair_start(text1.charCodeAt(pointerMid - 1))) {
+  const seqItem = text1[pointerMid - 1]
+  if (typeof seqItem === 'string' && is_surrogate_pair_start(codePointAt(seqItem, 0))) {
     pointerMid--
   }
 
@@ -343,9 +348,9 @@ function diff_commonPrefix(text1: string, text2: string): number {
  * @param {string} text2 Second string.
  * @return {number} The number of characters common to the end of each string.
  */
-function diff_commonSuffix(text1: string, text2: string) {
+function diff_commonSuffix(text1: Sequence, text2: Sequence) {
   // Quick check for common null cases.
-  if (!text1 || !text2 || text1.slice(-1) !== text2.slice(-1)) {
+  if (text1.length === 0 || text2.length === 0 || !isSequenceEqual(text1.slice(-1), text2.slice(-1))) {
     return 0
   }
   // Binary search.
@@ -356,8 +361,10 @@ function diff_commonSuffix(text1: string, text2: string) {
   var pointerEnd = 0
   while (pointerMin < pointerMid) {
     if (
-      text1.substring(text1.length - pointerMid, text1.length - pointerEnd) ==
-      text2.substring(text2.length - pointerMid, text2.length - pointerEnd)
+      isSequenceEqual(
+        text1.slice(text1.length - pointerMid, text1.length - pointerEnd),
+        text2.slice(text2.length - pointerMid, text2.length - pointerEnd)
+      )
     ) {
       pointerMin = pointerMid
       pointerEnd = pointerMin
@@ -367,7 +374,8 @@ function diff_commonSuffix(text1: string, text2: string) {
     pointerMid = Math.floor((pointerMax - pointerMin) / 2 + pointerMin)
   }
 
-  if (is_surrogate_pair_end(text1.charCodeAt(text1.length - pointerMid))) {
+  const seqItem = text1[text1.length - pointerMid]
+  if (typeof seqItem === 'string' && is_surrogate_pair_end(codePointAt(seqItem, 0))) {
     pointerMid--
   }
 
@@ -385,7 +393,7 @@ function diff_commonSuffix(text1: string, text2: string) {
  *     text1, the suffix of text1, the prefix of text2, the suffix of
  *     text2 and the common middle.  Or null if there was no match.
  */
-function diff_halfMatch_(text1: string, text2: string) {
+function diff_halfMatch_(text1: Sequence, text2: Sequence) {
   var longText = text1.length > text2.length ? text1 : text2
   var shortText = text1.length > text2.length ? text2 : text1
   if (longText.length < 4 || shortText.length * 2 < longText.length) {
@@ -404,27 +412,26 @@ function diff_halfMatch_(text1: string, text2: string) {
    *     of shortText and the common middle.  Or null if there was no match.
    * @private
    */
-  function diff_halfMatchI_(longText: string, shortText: string, i: number): string[] | null {
+  function diff_halfMatchI_(longText: Sequence, shortText: Sequence, i: number): Sequence[] | null {
     // Start with a 1/4 length substring at position i as a seed.
-    var seed = longText.substring(i, i + Math.floor(longText.length / 4))
+    var seed = longText.slice(i, i + Math.floor(longText.length / 4))
     var j = -1
-    var best_common = ''
-    let bestLongTextA: string = ''
-    let bestLongTextB: string = ''
-    let bestShortTextA: string = ''
-    let bestShortTextB: string = ''
-    while ((j = shortText.indexOf(seed, j + 1)) !== -1) {
+    var best_common: Sequence = []
+    let bestLongTextA: Sequence = []
+    let bestLongTextB: Sequence = []
+    let bestShortTextA: Sequence = []
+    let bestShortTextB: Sequence = []
+    while ((j = indexOfSequence(shortText, seed, j + 1)) !== -1) {
       var prefixLength = diff_commonPrefix(
-        longText.substring(i), shortText.substring(j))
+        longText.slice(i), shortText.slice(j))
       var suffixLength = diff_commonSuffix(
-        longText.substring(0, i), shortText.substring(0, j))
+        longText.slice(0, i), shortText.slice(0, j))
       if (best_common.length < suffixLength + prefixLength) {
-        best_common = shortText.substring(
-          j - suffixLength, j) + shortText.substring(j, j + prefixLength)
-        bestLongTextA = longText.substring(0, i - suffixLength) as string
-        bestLongTextB = longText.substring(i + prefixLength) as string
-        bestShortTextA = shortText.substring(0, j - suffixLength) as string
-        bestShortTextB = shortText.substring(j + prefixLength) as string
+        best_common = shortText.slice(j - suffixLength, j).concat(shortText.slice(j, j + prefixLength))
+        bestLongTextA = longText.slice(0, i - suffixLength)
+        bestLongTextB = longText.slice(i + prefixLength)
+        bestShortTextA = shortText.slice(0, j - suffixLength)
+        bestShortTextB = shortText.slice(j + prefixLength)
       }
     }
     if (best_common.length * 2 >= longText.length) {
@@ -441,11 +448,11 @@ function diff_halfMatch_(text1: string, text2: string) {
   var hm1 = diff_halfMatchI_(longText, shortText, Math.ceil(longText.length / 4))
   // Check again based on the third quarter.
   var hm2 = diff_halfMatchI_(longText, shortText, Math.ceil(longText.length / 2))
-  var hm: string[]
+  var hm: Sequence[]
   if (!hm1 && !hm2) {
     return null
   } else if (!hm2) {
-    hm = hm1 as string[]
+    hm = hm1 as Sequence[]
   } else if (!hm1) {
     hm = hm2
   } else {
@@ -478,12 +485,12 @@ function diff_halfMatch_(text1: string, text2: string) {
  * @param {boolean} fix_unicode Whether to normalize to a unicode-correct diff
  */
 function diff_cleanupMerge(diffs: IDiff[], fix_unicode: boolean) {
-  diffs.push([DiffOp.DIFF_EQUAL, ''])  // Add a dummy entry at the end.
+  diffs.push([DiffOp.DIFF_EQUAL, []])  // Add a dummy entry at the end.
   var pointer = 0
   var count_delete = 0
   var count_insert = 0
-  var text_delete = ''
-  var text_insert = ''
+  var text_delete:Sequence = []
+  var text_insert:Sequence = []
   var commonLength
   while (pointer < diffs.length) {
     if (pointer < diffs.length - 1 && !diffs[pointer][1]) {
@@ -494,12 +501,12 @@ function diff_cleanupMerge(diffs: IDiff[], fix_unicode: boolean) {
       case DiffOp.DIFF_INSERT:
 
         count_insert++
-        text_insert += diffs[pointer][1]
+        text_insert = text_insert.concat(diffs[pointer][1])
         pointer++
         break
       case DiffOp.DIFF_DELETE:
         count_delete++
-        text_delete += diffs[pointer][1]
+        text_delete = text_delete.concat(diffs[pointer][1])
         pointer++
         break
       case DiffOp.DIFF_EQUAL:
@@ -516,33 +523,33 @@ function diff_cleanupMerge(diffs: IDiff[], fix_unicode: boolean) {
           // particular case, both equalities go away, we absorb any previous inequalities,
           // and we keep scanning for the next equality before rewriting the tuples.
           if (previous_equality >= 0 && ends_with_pair_start(diffs[previous_equality][1])) {
-            var stray = diffs[previous_equality][1].slice(-1)
+            var stray1 = diffs[previous_equality][1].slice(-1)
             diffs[previous_equality][1] = diffs[previous_equality][1].slice(0, -1)
-            text_delete = stray + text_delete
-            text_insert = stray + text_insert
-            if (!diffs[previous_equality][1]) {
+            text_delete = stray1.concat(text_delete)
+            text_insert = stray1.concat(text_insert)
+            if (diffs[previous_equality][1].length > 0) {
               // emptied out previous equality, so delete it and include previous delete/insert
               diffs.splice(previous_equality, 1)
               pointer--
               var k = previous_equality - 1
               if (diffs[k] && diffs[k][0] === DiffOp.DIFF_INSERT) {
                 count_insert++
-                text_insert = diffs[k][1] + text_insert
+                text_insert = diffs[k][1].concat(text_insert)
                 k--
               }
               if (diffs[k] && diffs[k][0] === DiffOp.DIFF_DELETE) {
                 count_delete++
-                text_delete = diffs[k][1] + text_delete
+                text_delete = diffs[k][1].concat(text_delete)
                 k--
               }
               previous_equality = k
             }
           }
           if (starts_with_pair_end(diffs[pointer][1])) {
-            var stray = diffs[pointer][1].charAt(0)
+            var stray2 = diffs[pointer][1][0]
             diffs[pointer][1] = diffs[pointer][1].slice(1)
-            text_delete += stray
-            text_insert += stray
+            text_delete.push(stray2)
+            text_insert.push(stray2)
           }
         }
         if (pointer < diffs.length - 1 && !diffs[pointer][1]) {
@@ -557,21 +564,21 @@ function diff_cleanupMerge(diffs: IDiff[], fix_unicode: boolean) {
             commonLength = diff_commonPrefix(text_insert, text_delete)
             if (commonLength !== 0) {
               if (previous_equality >= 0) {
-                diffs[previous_equality][1] += text_insert.substring(0, commonLength)
+                diffs[previous_equality][1] = diffs[previous_equality][1].concat(text_insert.slice(0, commonLength))
               } else {
-                diffs.splice(0, 0, [DiffOp.DIFF_EQUAL, text_insert.substring(0, commonLength)])
+                diffs.splice(0, 0, [DiffOp.DIFF_EQUAL, text_insert.slice(0, commonLength)])
                 pointer++
               }
-              text_insert = text_insert.substring(commonLength)
-              text_delete = text_delete.substring(commonLength)
+              text_insert = text_insert.slice(commonLength)
+              text_delete = text_delete.slice(commonLength)
             }
             // Factor out any common suffixes.
             commonLength = diff_commonSuffix(text_insert, text_delete)
             if (commonLength !== 0) {
               diffs[pointer][1] =
-                text_insert.substring(text_insert.length - commonLength) + diffs[pointer][1]
-              text_insert = text_insert.substring(0, text_insert.length - commonLength)
-              text_delete = text_delete.substring(0, text_delete.length - commonLength)
+                text_insert.slice(text_insert.length - commonLength).concat(diffs[pointer][1])
+              text_insert = text_insert.slice(0, text_insert.length - commonLength)
+              text_delete = text_delete.slice(0, text_delete.length - commonLength)
             }
           }
           // Delete the offending records and add the merged ones.
@@ -592,19 +599,19 @@ function diff_cleanupMerge(diffs: IDiff[], fix_unicode: boolean) {
         }
         if (pointer !== 0 && diffs[pointer - 1][0] === DiffOp.DIFF_EQUAL) {
           // Merge this equality with the previous one.
-          diffs[pointer - 1][1] += diffs[pointer][1]
+          diffs[pointer - 1][1] = diffs[pointer - 1][1].concat(diffs[pointer][1])
           diffs.splice(pointer, 1)
         } else {
           pointer++
         }
         count_insert = 0
         count_delete = 0
-        text_delete = ''
-        text_insert = ''
+        text_delete = []
+        text_insert = []
         break
     }
   }
-  if (diffs[diffs.length - 1][1] === '') {
+  if (diffs[diffs.length - 1][1].length === 0) {
     diffs.pop()  // Remove the dummy entry at the end.
   }
 
@@ -618,22 +625,21 @@ function diff_cleanupMerge(diffs: IDiff[], fix_unicode: boolean) {
     if (diffs[pointer - 1][0] === DiffOp.DIFF_EQUAL &&
       diffs[pointer + 1][0] === DiffOp.DIFF_EQUAL) {
       // This is a single edit surrounded by equalities.
-      if (diffs[pointer][1].substring(diffs[pointer][1].length -
-        diffs[pointer - 1][1].length) === diffs[pointer - 1][1]) {
+      if (
+        isSequenceEqual(
+          diffs[pointer][1].slice(diffs[pointer][1].length - diffs[pointer - 1][1].length),
+          diffs[pointer - 1][1]
+        )
+      ) {
         // Shift the edit over the previous equality.
-        diffs[pointer][1] = diffs[pointer - 1][1] +
-          diffs[pointer][1].substring(0, diffs[pointer][1].length -
-            diffs[pointer - 1][1].length)
-        diffs[pointer + 1][1] = diffs[pointer - 1][1] + diffs[pointer + 1][1]
+        diffs[pointer][1] = diffs[pointer - 1][1].concat(diffs[pointer][1].slice(0, diffs[pointer][1].length - diffs[pointer - 1][1].length))
+        diffs[pointer + 1][1] = diffs[pointer - 1][1].concat(diffs[pointer + 1][1])
         diffs.splice(pointer - 1, 1)
         changes = true
-      } else if (diffs[pointer][1].substring(0, diffs[pointer + 1][1].length) ==
-        diffs[pointer + 1][1]) {
+      } else if (isSequenceEqual(diffs[pointer][1].slice(0, diffs[pointer + 1][1].length), diffs[pointer + 1][1])) {
         // Shift the edit over the next equality.
-        diffs[pointer - 1][1] += diffs[pointer + 1][1]
-        diffs[pointer][1] =
-          diffs[pointer][1].substring(diffs[pointer + 1][1].length) +
-          diffs[pointer + 1][1]
+        diffs[pointer - 1][1] = diffs[pointer - 1][1].concat(diffs[pointer + 1][1])
+        diffs[pointer][1] = diffs[pointer][1].slice(diffs[pointer + 1][1].length).concat(diffs[pointer + 1][1])
         diffs.splice(pointer + 1, 1)
         changes = true
       }
@@ -654,12 +660,14 @@ function is_surrogate_pair_end(charCode: number) {
   return charCode >= 0xDC00 && charCode <= 0xDFFF
 }
 
-function starts_with_pair_end(str: string) {
-  return is_surrogate_pair_end(str.charCodeAt(0))
+function starts_with_pair_end(str: Sequence) {
+  const firstItem = str[0]
+  return typeof firstItem === 'string' && is_surrogate_pair_end(codePointAt(firstItem, 0))
 }
 
-function ends_with_pair_start(str: string) {
-  return is_surrogate_pair_start(str.charCodeAt(str.length - 1))
+function ends_with_pair_start(str: Sequence) {
+  const lastItem = str[str.length - 1]
+  return typeof lastItem === 'string' && is_surrogate_pair_start(codePointAt(lastItem, 0))
 }
 
 function remove_empty_tuples(tuples: IDiff[]): IDiff[] {
@@ -672,7 +680,7 @@ function remove_empty_tuples(tuples: IDiff[]): IDiff[] {
   return ret
 }
 
-function make_edit_splice(before: string, oldMiddle: string, newMiddle: string, after: string) {
+function make_edit_splice(before: Sequence, oldMiddle: Sequence, newMiddle: Sequence, after: Sequence) {
   if (ends_with_pair_start(before) || starts_with_pair_end(after)) {
     return null
   }
@@ -684,7 +692,7 @@ function make_edit_splice(before: string, oldMiddle: string, newMiddle: string, 
   ])
 }
 
-function find_cursor_edit_diff(oldText: string, newText: string, cursor_pos: CursorPos) {
+function find_cursor_edit_diff(oldText: Sequence, newText: Sequence, cursor_pos: CursorPos) {
   // note: this runs after equality check has ruled out exact equality
   var oldRange = typeof cursor_pos === 'number' ?
     { index: cursor_pos, length: 0 } : cursor_pos.oldRange
@@ -713,13 +721,13 @@ function find_cursor_edit_diff(oldText: string, newText: string, cursor_pos: Cur
       }
       var newBefore = newText.slice(0, newCursor)
       var newAfter = newText.slice(newCursor)
-      if (newAfter !== oldAfter) {
+      if (!isSequenceEqual(newAfter, oldAfter)) {
         break editBefore
       }
       var prefixLength = Math.min(oldCursor, newCursor)
       var oldPrefix = oldBefore.slice(0, prefixLength)
       var newPrefix = newBefore.slice(0, prefixLength)
-      if (oldPrefix !== newPrefix) {
+      if (!isSequenceEqual(oldPrefix, newPrefix)) {
         break editBefore
       }
       var oldMiddle = oldBefore.slice(prefixLength)
@@ -734,13 +742,13 @@ function find_cursor_edit_diff(oldText: string, newText: string, cursor_pos: Cur
       var cursor = oldCursor
       var newBefore = newText.slice(0, cursor)
       var newAfter = newText.slice(cursor)
-      if (newBefore !== oldBefore) {
+      if (!isSequenceEqual(newBefore, oldBefore)) {
         break editAfter
       }
       var suffixLength = Math.min(oldLength - cursor, newLength - cursor)
       var oldSuffix = oldAfter.slice(oldAfter.length - suffixLength)
       var newSuffix = newAfter.slice(newAfter.length - suffixLength)
-      if (oldSuffix !== newSuffix) {
+      if (!isSequenceEqual(oldSuffix, newSuffix)) {
         break editAfter
       }
       var oldMiddle = oldAfter.slice(0, oldAfter.length - suffixLength)
@@ -760,7 +768,10 @@ function find_cursor_edit_diff(oldText: string, newText: string, cursor_pos: Cur
       }
       var newPrefix = newText.slice(0, prefixLength)
       var newSuffix = newText.slice(newLength - suffixLength)
-      if (oldPrefix !== newPrefix || oldSuffix !== newSuffix) {
+      if (
+        !isSequenceEqual(oldPrefix, newPrefix) ||
+        !isSequenceEqual(oldSuffix, newSuffix)
+      ) {
         break replaceRange
       }
       var oldMiddle = oldText.slice(prefixLength, oldLength - suffixLength)
@@ -772,8 +783,88 @@ function find_cursor_edit_diff(oldText: string, newText: string, cursor_pos: Cur
   return null
 }
 
+/**
+ * check if two sequences are absolutely equal
+ */
+function isSequenceEqual(s1: Sequence, s2: Sequence): boolean {
+  let res = s1.length === s2.length
+  if (res) {
+    for (let index = 0; index < s1.length; index++) {
+      res = s1[index] === s2[index]
+      if (!res) {
+        break
+      }
+    }
+  }
+  return res
+}
+
+/**
+ * search position of shortSeq in longSeq
+ */
+function indexOfSequence(longSeq: Sequence, shortSeq: Sequence, fromIndex = 0): number {
+  let res = -1
+  for (let longSeqPos = fromIndex, longSeqLength = longSeq.length; longSeqPos < longSeqLength; longSeqPos++) {
+    let find = true
+    for (let shortSeqPos = 0, shortSeqLength = shortSeq.length; shortSeqPos < shortSeqLength; shortSeqPos++) {
+      const longSeqItem = longSeq[longSeqPos + shortSeqPos]
+      const shortSeqItem = shortSeq[shortSeqPos]
+      if (longSeqItem !== shortSeqItem) {
+        find = false
+        break
+      }
+    }
+    if (find) {
+      res = longSeqPos
+      break
+    }
+  }
+  return res
+}
+
+function codePointAt(str: string, position: number): number {
+  var size = str.length
+  // 变成整数
+  var index = position ? Number(position) : 0
+  if (index != index) { // better `isNaN`
+    index = 0
+  }
+  // 边界
+  if (index < 0 || index >= size) {
+    throw new Error('out of string size')
+  }
+  // 第一个编码单元
+  var first = str.charCodeAt(index)
+  var second
+  if ( // 检查是否开始 surrogate pair
+    first >= 0xD800 && first <= 0xDBFF && // high surrogate
+    size > index + 1 // 下一个编码单元
+  ) {
+    second = str.charCodeAt(index + 1)
+    if (second >= 0xDC00 && second <= 0xDFFF) { // low surrogate
+      // http://mathiasbynens.be/notes/javascript-encoding#surrogate-formulae
+      return (first - 0xD800) * 0x400 + second - 0xDC00 + 0x10000
+    }
+  }
+  return first
+}
+
 export const diff = (text1: string, text2: string, cursor_pos?: CursorPos) => {
+  const seq1 = toArray(text1)
+  const seq2 = toArray(text2)
+  const diffs = diffSequence(seq1, seq2, cursor_pos)
+  const res = new Array(diffs.length)
+  for (let index = 0; index < diffs.length; index++) {
+    const diff = diffs[index];
+    res[index] = [diff[0], diff[1].join('')]
+  }
+
+  return res
+}
+
+export const diffSequence = (s1: Sequence, s2: Sequence, cursor_pos?: CursorPos) => {
   // only pass fix_unicode=true at the top level, not when diff_main is
   // recursively invoked
-  return diff_main(text1, text2, cursor_pos, true)
+  const diffs = diff_main(s1, s2, cursor_pos, true)
+  return diffs
 }

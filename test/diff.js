@@ -1,6 +1,6 @@
 var _ = require('lodash');
 var seedrandom = require('seedrandom');
-var { diff, DiffOp } = require('../dist/diff.js');
+var { diff, DiffOp, diffSequence } = require('../dist/diff.js');
 
 var ITERATIONS = 10000;
 var ALPHABET = 'GATTACA';
@@ -37,7 +37,13 @@ for (var i = 0; i <= ITERATIONS; ++i) {
   emoji_strings.push(letters.join(''));
 }
 
-describe('diff algorithm', function () {
+describe('diff string', function () {
+  it('basic', function () {
+    var a = 'hello world'
+    var b = 'llo w'
+    var result = diff(a, b)
+    applyDiff(result, a, b)
+  })
   it('Running regression tests...', function () {
     [
       ['GAATAAAAAAAGATTAACAT', 'AAAAACTTGTAATTAACAAC'],
@@ -151,7 +157,6 @@ describe('diff algorithm', function () {
       ['hello', [0, 5], 'h', 1, '-hello+h'],
       ['yay', [0, 3], 'y', 1, '-yay+y'],
       ['bobob', [1, 4], 'bob', 2, '=b-obo+o=b'],
-
     ].forEach(function (data) {
       var oldText = data[0];
       var newText = data[2];
@@ -174,6 +179,87 @@ describe('diff algorithm', function () {
       doCursorTest(oldText + 'x', newText + 'x', cursorInfo, diffAppend(expected, 'x'));
     });
   });
+  it('Running emoji tests', function () {
+    [
+      ['🐶', '🐯', '-🐶+🐯'],
+      // ['👨🏽', '👩🏽', '-👨+👩=🏽'],
+      // ['👩🏼', '👩🏽', '=👩-🏼+🏽'],
+      // I've made some change on this place, the emoji will not be treated as two characters but one
+      ['👨🏽', '👩🏽', '-👨🏽+👩🏽'],
+      ['👩🏼', '👩🏽', '-👩🏼+👩🏽'],
+  
+      ['🍏🍎', '🍎', '-🍏=🍎'],
+      ['🍎', '🍏🍎', '+🍏=🍎'],
+  
+    ].forEach(function (data) {
+      var oldText = data[0];
+      var newText = data[1];
+      var expected = parseDiff(data[2]);
+      doEmojiTest(oldText, newText, expected);
+      doEmojiTest('x' + oldText, 'x' + newText, diffPrepend(expected, 'x'));
+      doEmojiTest(oldText + 'x', newText + 'x', diffAppend(expected, 'x'));
+    });
+  });
+  it('Running emoji fuzz tests...', function () {
+    for (var i = 0; i < ITERATIONS; ++i) {
+      var oldText = emoji_strings[i];
+      var newText = emoji_strings[i + 1];
+      var result = diff(oldText, newText);
+      applyDiff(result, oldText, newText);
+    }
+  });
+})
+
+describe('diff string and number id', function () {
+  it('only number', function () {
+    var a = [1, 2, 3]
+    var b = [1, 2, 3]
+    var c = [1, 3]
+    var d = [2, 3]
+    var e = [1, 2]
+    var f = [2]
+    var g = []
+    var h = [4, 5, 6]
+    var resB = diffSequence(a, b)
+    var resC = diffSequence(a, c)
+    var resD = diffSequence(a, d)
+    var resE = diffSequence(a, e)
+    var resF = diffSequence(a, f)
+    var resG = diffSequence(a, g)
+    var resH = diffSequence(a, h)
+    expect(resB).toEqual([[0, [1, 2, 3]]])
+    expect(resC).toEqual([[0, [1]], [-1, [2]], [0, [3]]])
+    expect(resD).toEqual([[-1, [1]], [0, [2, 3]]])
+    expect(resE).toEqual([[0, [1, 2]], [-1, [3]]])
+    expect(resF).toEqual([[-1, [1]], [0, [2]], [-1, [3]]])
+    expect(resG).toEqual([[-1, [1, 2, 3]]])
+    expect(resH).toEqual([[-1, [1, 2, 3]], [1, [4, 5, 6]]])
+  })
+
+  it('string and number mixed', function () {
+    var a = ['a', 97, '3']
+    var b = ['a', 97, '3']
+    var c = ['a', '3']
+    var d = [97, '3']
+    var e = ['a', 97]
+    var f = [97]
+    var g = []
+    var h = [3, '9', 6]
+    var resB = diffSequence(a, b)
+    var resC = diffSequence(a, c)
+    var resD = diffSequence(a, d)
+    var resE = diffSequence(a, e)
+    var resF = diffSequence(a, f)
+    var resG = diffSequence(a, g)
+    var resH = diffSequence(a, h)
+    expect(resB).toEqual([[0, ['a', 97, '3']]])
+    expect(resC).toEqual([[0, ['a']], [-1, [97]], [0, ['3']]])
+    expect(resD).toEqual([[-1, ['a']], [0, [97, '3']]])
+    expect(resE).toEqual([[0, ['a', 97]], [-1, ['3']]])
+    expect(resF).toEqual([[-1, ['a']], [0, [97]], [-1, ['3']]])
+    expect(resG).toEqual([[-1, ['a', 97, '3']]])
+    expect(resH).toEqual([[-1, ['a', 97, '3']], [1, [3, '9', 6]]])
+  })
 })
 
 function parseDiff(str) {
@@ -233,26 +319,6 @@ function doCursorTest(oldText, newText, cursorInfo, expected) {
   }
 }
 
-it('Running emoji tests', function () {
-  [
-    ['🐶', '🐯', '-🐶+🐯'],
-    ['👨🏽', '👩🏽', '-👨+👩=🏽'],
-    ['👩🏼', '👩🏽', '=👩-🏼+🏽'],
-
-    ['🍏🍎', '🍎', '-🍏=🍎'],
-    ['🍎', '🍏🍎', '+🍏=🍎'],
-
-  ].forEach(function (data) {
-    var oldText = data[0];
-    var newText = data[1];
-    var expected = parseDiff(data[2]);
-    doEmojiTest(oldText, newText, expected);
-    doEmojiTest('x' + oldText, 'x' + newText, diffPrepend(expected, 'x'));
-    doEmojiTest(oldText + 'x', newText + 'x', diffAppend(expected, 'x'));
-  });
-});
-
-
 function doEmojiTest(oldText, newText, expected) {
   var result = diff(oldText, newText);
   if (!_.isEqual(result, expected)) {
@@ -261,15 +327,6 @@ function doEmojiTest(oldText, newText, expected) {
     throw new Error('Emoji simple test case failed');
   }
 }
-
-it('Running emoji fuzz tests...', function () {
-  for (var i = 0; i < ITERATIONS; ++i) {
-    var oldText = emoji_strings[i];
-    var newText = emoji_strings[i + 1];
-    var result = diff(oldText, newText);
-    applyDiff(result, oldText, newText);
-  }
-});
 
 // Applies a diff to text, throwing an error if diff is invalid or incorrect
 function applyDiff(diffs, text, expectedResult) {
