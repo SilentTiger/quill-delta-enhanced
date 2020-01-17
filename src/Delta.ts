@@ -1,4 +1,4 @@
-import equal from 'deep-equal';
+import equal from 'fast-deep-equal';
 import extend from 'extend';
 import { diff, CursorInfo, DiffOp } from './diff';
 import AttributeMap from './AttributeMap';

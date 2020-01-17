@@ -1,4 +1,4 @@
-import equal from 'deep-equal';
+import equal from 'fast-deep-equal';
 import extend from 'extend';
 
 interface AttributeMap {

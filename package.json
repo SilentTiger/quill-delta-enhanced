@@ -6,8 +6,10 @@
   "homepage": "https://github.com/SilentTiger/quill-delta-enhanced",
   "main": "dist/Delta.js",
   "dependencies": {
-    "deep-equal": "^2.0.1",
-    "extend": "^3.0.2"
+    "@types/lodash": "^4.14.149",
+    "extend": "^3.0.2",
+    "fast-deep-equal": "^3.1.1",
+    "lodash": "^4.17.15"
   },
   "devDependencies": {
     "@types/deep-equal": "^1.0.1",
@@ -15,7 +17,6 @@
     "coveralls": "^3.0.9",
     "istanbul": "~0.4.5",
     "jasmine": "^3.5.0",
-    "lodash": "~3.9.3",
     "prettier": "^1.19.1",
     "seedrandom": "~2.4.0",
     "tslint": "^5.20.1",
