@@ -2,7 +2,7 @@ import equal from 'fast-deep-equal';
 import extend from 'extend';
 import { diff, CursorInfo, DiffOp } from './diff';
 import AttributeMap from './AttributeMap';
-import Op, { OpInsertDateType, OpDeltaType, OpRetainType } from './Op';
+import Op, { OpInsertDataType, OpDeleteType, OpRetainType } from './Op';
 
 const NULL_CHARACTER = String.fromCharCode(0); // Placeholder char for embed in diff()
 
@@ -34,7 +34,7 @@ class Delta {
     this.ops = inputOps
   }
 
-  insert(arg: OpInsertDateType, attributes?: AttributeMap): this {
+  insert(arg: OpInsertDataType, attributes?: AttributeMap): this {
     const newOp: Op = {};
     if (typeof arg === 'string' && arg.length === 0) {
       return this;
@@ -50,7 +50,7 @@ class Delta {
     return this.push(newOp);
   }
 
-  delete(length: OpDeltaType): this {
+  delete(length: OpDeleteType): this {
     if (length <= 0) {
       return this;
     }
