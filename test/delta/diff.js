@@ -144,10 +144,28 @@ describe('diff()', function() {
     }).toThrow(new Error('diff() called on non-document'));
   });
 
-  it('diff delta', function () {
-    var a = new Delta().insert(new Delta().insert('a'))
-    var b = new Delta().insert(new Delta().insert('b')).insert(new Delta().insert('a'))
-    var expected = new Delta().retain(new Delta().insert('b').delete(1)).insert(new Delta().insert('a'))
+  it('diff simple delta', function () {
+    var a = new Delta().insert(new Delta().insert('a'), null, 1)
+    var b = new Delta().insert(new Delta().insert('b'), null, 2).insert(new Delta().insert('a'), null, 1)
+    var expected = new Delta().insert(new Delta().insert('b'))
+    expect(a.diff(b)).toEqual(expected)
+  })
+
+  it('diff string and delta', function () {
+    var a = new Delta().insert('aaa').insert(new Delta().insert('A'), null, 1)
+    var b = new Delta().insert('aa').insert(new Delta().insert('B')).insert(new Delta().insert('A'), null, 1)
+    var expected = new Delta().retain(2).delete(1).insert(new Delta().insert('B'))
+    expect(a.diff(b)).toEqual(expected)
+  })
+
+  it('diff string and delta with attributes', function () {
+    var a = new Delta().insert('aaa')
+      .insert(new Delta().insert('A', { A: 'A' }), { a: 'a' }, 1)
+    var b = new Delta().insert('abc').insert(new Delta().insert('B'))
+      .insert(new Delta().insert('A', { A: 'AB', AB: 'BA' }), { a: 'ab', ab: 'ba' }, 1)
+    var expected = new Delta().retain(1).insert('bc').delete(2)
+      .insert(new Delta().insert('B'))
+      .retain(new Delta().retain(1, { A: 'AB', AB: 'BA' }), { a: 'ab', ab: 'ba' })
     expect(a.diff(b)).toEqual(expected)
   })
 });
