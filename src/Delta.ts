@@ -1,8 +1,9 @@
 import equal from 'fast-deep-equal';
 import extend from 'extend';
-import { diff, CursorInfo, DiffOp } from './diff';
+import { CursorInfo, DiffOp, Sequence, diffSequence } from './diff';
 import AttributeMap from './AttributeMap';
 import Op, { OpInsertDataType, OpDeleteType, OpRetainType } from './Op';
+import toArray from 'lodash/toArray'
 
 const NULL_CHARACTER = String.fromCharCode(0); // Placeholder char for embed in diff()
 
@@ -34,7 +35,7 @@ class Delta {
     this.ops = inputOps
   }
 
-  insert(arg: OpInsertDataType, attributes?: AttributeMap): this {
+  insert(arg: OpInsertDataType, attributes?: AttributeMap, key?: number): this {
     const newOp: Op = {};
     if (typeof arg === 'string' && arg.length === 0) {
       return this;
@@ -46,6 +47,9 @@ class Delta {
       Object.keys(attributes).length > 0
     ) {
       newOp.attributes = attributes;
+    }
+    if (typeof key === 'number') {
+      newOp.key = key
     }
     return this.push(newOp);
   }
@@ -351,29 +355,43 @@ class Delta {
     if (this.ops === other.ops) {
       return new Delta();
     }
-    const strings = [this, other].map(delta => {
-      return delta
-        .map(op => {
+    const sequences: Sequence[] = [this, other].map(delta => {
+      const seq:Sequence = []
+      delta.forEach(op => {
           if (op.insert != null) {
             if (typeof op.insert === 'string') {
-              return op.insert
+              const stringSeq = toArray(op.insert)
+              for (let index = 0; index < stringSeq.length; index++) {
+                seq.push(stringSeq[index])
+              }
             } else if (typeof op.insert === 'number') {
-              return Array.apply(null, Array(op.insert)).map(() => { return NULL_CHARACTER }).join('')
+              for (let index = 0; index < op.insert; index++) {
+                seq.push(NULL_CHARACTER)
+              }
             } else {
-              return NULL_CHARACTER
+              // 如果有 key 就用 key 来计算 diff，否则退化成 NULL_CHARACTER
+              if (typeof op.key === 'number') {
+                seq.push(op.key)
+              } else {
+                seq.push(NULL_CHARACTER)
+              }
             }
+          } else {
+            const prep = delta === other ? 'on' : 'with'
+            throw new Error('diff() called ' + prep + ' non-document')
           }
-          const prep = delta === other ? 'on' : 'with';
-          throw new Error('diff() called ' + prep + ' non-document');
         })
-        .join('');
-    });
+      return seq
+    })
     const retDelta = new Delta();
-    const diffResult = diff(strings[0], strings[1], cursor);
+    const diffResult = diffSequence(sequences[0], sequences[1], cursor);
     const thisIter = Op.iterator(this.ops);
     const otherIter = Op.iterator(other.ops);
     diffResult.forEach(component => {
-      let length = component[1].length;
+      let length = component[1].reduce((totalLength: number, seqItem) => {
+        const itemLength = typeof seqItem === 'number' ? 1 : seqItem.length
+        return totalLength + itemLength
+      }, 0)
       while (length > 0) {
         let opLength = 0;
         switch (component[0]) {
@@ -559,6 +577,27 @@ class Delta {
     }
     return index;
   }
+
+  // private parseSequence(seq: Sequence): Array<string | number> {
+  //   const res:Array<string | number> = []
+  //   let stringCache = ''
+  //   for (let index = 0; index < seq.length; index++) {
+  //     const element = seq[index]
+  //     if (typeof element === 'number') {
+  //       if (stringCache.length > 0) {
+  //         res.push(stringCache)
+  //         stringCache = ''
+  //       }
+  //       res.push(element)
+  //     } else {
+  //       stringCache += element
+  //     }
+  //   }
+  //   if (stringCache.length > 0) {
+  //     res.push(stringCache)
+  //   }
+  //   return res
+  // }
 }
 
 export = Delta;

@@ -36,8 +36,8 @@ export enum DiffOp {
   DIFF_EQUAL = 0,
 }
 
-type Sequence = Array<String | number>
-type IDiff = [DiffOp, Sequence]
+export type Sequence = Array<String | number>
+export type IDiff = [DiffOp, Sequence]
 export interface CursorInfo {
   oldRange: { index: number; length: number };
   newRange: { index: number; length: number };

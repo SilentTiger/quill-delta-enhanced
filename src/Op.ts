@@ -13,6 +13,7 @@ interface Op {
   retain?: OpRetainType;
 
   attributes?: AttributeMap;
+  key?: number;
 }
 
 namespace Op {
