@@ -18,6 +18,7 @@ var doc = new Delta().insert(embedContent)
 ```
 
 No matter how complicated the content of embedContent is, for doc, the length of embedContent is always 1.
+In addition, a number type 'key' attribute has been added to the insert operation to mark the unique insert operation. For the role of the key, refer to the part that introduces the new diff algorithm below.
 
 ### enhance retain operator
 The original retain operation of quill-delta can only be of type number. On this basis, a delta type is added, for example:
@@ -77,5 +78,25 @@ var insertImage = new Delta().insert(1, {src: 'http://xxxx.xx/xx.jpg'})
 // You can even insert 5 pictures in a row
 var insertFiveImages = new Delta().insert(5, {src: 'http://xxxx.xx/xx.jpg'})
 ```
+
+### modified diff algorithm
+quill-delta's original diff algorithm can only perform diff calculations on strings, so the use scenarios are very limited and the calculated results are often not optimal. This is because quill-delta's diff algorithm uses the npm package fast-diff at the bottom. This package only supports string diff. Imagine the following case
+``` javascript
+var a = new Delta().insert(new Delta().insert('a'))
+var b = new Delta().insert(new Delta().insert('b')).insert(new Delta().insert('a'))
+```
+According to the original diff logic of quill-delta, the diff result of these two deltas will be
+``` javascript
+new Delta().retain(new Delta().insert('b').delete(1)).insert(new Delta().insert('a'))
+```
+For specific reasons, you can refer to the source code of quill-delta.
+In order to solve this problem, I introduced a new attribute in the insert operation: key, which is used to mark the unique insert operation, so that when two deltas contain an insert operation with the same key, quill-delta-enhanced will know These two operations are the same operation. If the data of this operation has not changed, then the situation of deleting and reinserting this operation will not occur. The above scenario will result in diff in quill-delta-enhanced. become:
+``` javascript
+var a = new Delta().insert(new Delta().insert('a'), null, 1)
+var b = new Delta().insert(new Delta().insert('b'), null, 2).insert(new Delta().insert('a'), null, 1)
+
+var expected = new Delta().insert(new Delta().insert('b'))
+```
+More complex scenarios can refer to the testcase in the repository
 
 Have fun!
