@@ -365,8 +365,16 @@ class Delta {
                 seq.push(stringSeq[index])
               }
             } else if (typeof op.insert === 'number') {
-              for (let index = 0; index < op.insert; index++) {
-                seq.push(NULL_CHARACTER)
+              if (op.insert === 1) {
+                if (typeof op.key === 'number') {
+                  seq.push(op.key)
+                } else {
+                  seq.push(NULL_CHARACTER)
+                }
+              } else {
+                for (let index = 0; index < op.insert; index++) {
+                  seq.push(NULL_CHARACTER)
+                }
               }
             } else {
               // 如果有 key 就用 key 来计算 diff，否则退化成 NULL_CHARACTER
