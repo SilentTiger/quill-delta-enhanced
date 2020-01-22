@@ -1,5 +1,5 @@
 # QUILL DELTA ENHANCED
-
+想进一步了解设计思路相关信息，可以阅读 [Instruction](./Instruction.ZH-CN.md) 文档。
 #### [English](./README.md) 中文版
 
 支持嵌套 delta 的 quill-delta。

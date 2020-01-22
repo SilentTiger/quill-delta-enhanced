@@ -1,5 +1,6 @@
 # QUILL DELTA ENHANCED
 
+For more instructions, please read [Instruction](./Instruction.md).
 #### English    [中文版](./README.ZH-CN.md)
 
 quill-delta with DELTA EMBED support.
