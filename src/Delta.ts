@@ -7,12 +7,101 @@ import toArray from 'lodash/toArray'
 
 const NULL_CHARACTER = String.fromCharCode(0); // Placeholder char for embed in diff()
 
+type OpJson = {
+  insert?: string | number | { ops: OpJson[] }
+  retain?: number | { ops: OpJson[] }
+  delete?: number
+  attributes?: AttributeMap;
+}
 class Delta {
   static Op = Op;
   static AttributeMap = AttributeMap;
 
+  static stringify(delta: Delta): string{
+    let res = ''
+    for (let index = 0; index < delta.ops.length; index++) {
+      const op = delta.ops[index];
+      let data: any[] = []
+      if (op.insert !== undefined) {
+        if (op.insert instanceof Delta) {
+          data.push({d: Delta.stringify(op.insert)})
+        } else {
+          data.push(op.insert)
+        }
+        if (op.attributes !== undefined) {
+          data.push(op.attributes)
+        }
+      } else if (op.retain !== undefined) {
+        if (op.retain instanceof Delta) {
+          data.push({d: Delta.stringify(op.retain)})
+        } else {
+          data.push(op.retain)
+        }
+        if (op.attributes !== undefined) {
+          data.push(op.attributes)
+        }
+        data.push(2)
+      }
+      else if (op.delete !== undefined) {
+        data.push(op.delete)
+        data.push(3)
+      }
+      res += JSON.stringify(data) + '\n'
+    }
+    return res
+  }
+
+  static parse(str: string): Delta | null {
+    const opStrings = str.split('\n')
+    if (opStrings.length > 0) {
+      // 先去掉最后的 \n 导致的空字符串
+      opStrings.pop()
+      const ops: Op[] = Array(opStrings.length)
+      if (opStrings.length > 0) {
+        for (let index = 0; index < opStrings.length; index++) {
+          const opJSON: Array<number | string | object> = JSON.parse(opStrings[index])
+          if (opJSON[1] === undefined) {
+            ops[index] = { insert: Delta.tryParseEmbedDelta(opJSON[0]) }
+          } else if (typeof opJSON[1] === 'number') {
+            if (opJSON[1] === 2) {
+              ops[index] = { retain: Delta.tryParseEmbedDelta(opJSON[0]) as Delta | number }
+            } else if (opJSON[1] === 3) {
+              ops[index] = { delete: opJSON[0] as number }
+            } else {
+              throw new Error('unknown op type')
+            }
+          } else if (typeof opJSON[1] === 'object') {
+            if (opJSON[2] === undefined) {
+              ops[index] = { insert: Delta.tryParseEmbedDelta(opJSON[0]), attributes: opJSON[1] }
+            } else if (opJSON[2] === 2) {
+              ops[index] = { retain: Delta.tryParseEmbedDelta(opJSON[0]) as Delta | number, attributes: opJSON[1] }
+            } else {
+              throw new Error('unknown op type')
+            }
+          } else {
+            throw new Error('wrong data type')
+          }
+        }
+        return new Delta({ ops })
+      }
+    }
+    return null
+  }
+
+  private static tryParseEmbedDelta(data: any): Delta | number | string {
+    if (typeof data === 'number' || typeof data === 'string') {
+      return data
+    } else if (typeof data === 'object' && typeof data?.d === 'string') {
+      const embedDelta = Delta.parse(data.d)
+      if (embedDelta) {
+        return embedDelta
+      }
+    }
+    throw new Error('unknown embed delta format')
+  }
+
   ops: Op[];
-  constructor(ops?: Op[] | { ops: Op[] }) {
+  constructor(ops?: OpJson[] | { ops: Op[] }) {
     let inputOps: any[]
     if (Array.isArray(ops)) {
       inputOps = ops;
