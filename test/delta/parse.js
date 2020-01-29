@@ -24,7 +24,7 @@ describe('stringify and parse', function () {
   })
 
   it('insert delta', function () {
-    var a = new Delta().insert(new Delta().insert(3))
+    var a = new Delta().insert(new Delta().insert(3).insert('abc'))
     var b = Delta.parse(Delta.stringify(a))
     expect(a).toEqual(b)
   })
