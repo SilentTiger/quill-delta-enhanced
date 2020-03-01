@@ -33,6 +33,11 @@ describe('stringify and parse', function () {
     var b = Delta.parse(Delta.stringify(a))
     expect(a).toEqual(b)
   })
+  it('insert empty delta', function () {
+    var a = new Delta().insert(new Delta())
+    var b = Delta.parse(Delta.stringify(a))
+    expect(a).toEqual(b)
+  })
 
   it('retain number', function () {
     var a = new Delta().retain(2)

@@ -92,6 +92,9 @@ class Delta {
     if (typeof data === 'number' || typeof data === 'string') {
       return data
     } else if (typeof data === 'object' && typeof data?.d === 'string') {
+      if (data.d.length === 0) {
+        return new Delta()
+      }
       const embedDelta = Delta.parse(data.d)
       if (embedDelta) {
         return embedDelta
