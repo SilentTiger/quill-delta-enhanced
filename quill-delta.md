@@ -622,7 +622,7 @@ Transform given Delta against own operations.
 
 #### Methods
 
-- `transform(other, priority = false)`
+- `transform(other, priority = false, chop = true)`
 - `transform(index, priority = false)` - Alias for [`transformPosition`](#tranformposition)
 
 #### Parameters
@@ -630,7 +630,7 @@ Transform given Delta against own operations.
 - `other` - Delta to transform
 - `priority` - Boolean used to break ties. If `true`, then `this` takes priority
   over `other`, that is, its actions are considered to happen "first."
-
+- `chop` - should chop after transform Delta. Set it `false` when you don't want to chop.
 #### Returns
 
 - `Delta` - transformed Delta

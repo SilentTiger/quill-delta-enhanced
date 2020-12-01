@@ -42,6 +42,14 @@ describe('transform()', function() {
     expect(a.transform(b, true)).toEqual(expected);
   });
 
+  it('retain and delete + retain', function() {
+    var a = new Delta().retain(2).delete(1);
+    var b = new Delta().retain(4);
+    var expected = new Delta().retain(3);
+    expect(a.transform(b, true, false)).toEqual(expected);
+    expect(a.transform(b, false, false)).toEqual(expected);
+  });
+
   it('delete + delete', function() {
     var a = new Delta().delete(1);
     var b = new Delta().delete(1);

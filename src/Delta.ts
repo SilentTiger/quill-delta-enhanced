@@ -610,9 +610,9 @@ class Delta {
     return inverted.chop();
   }
 
-  transform(index: number, priority?: boolean): number;
-  transform(other: Delta, priority?: boolean): Delta;
-  transform(arg: number | Delta, priority: boolean = false): typeof arg {
+  transform(index: number, priority?: boolean, chop?: boolean): number;
+  transform(other: Delta, priority?: boolean, chop?: boolean): Delta;
+  transform(arg: number | Delta, priority: boolean = false, chop: boolean = true): typeof arg {
     priority = !!priority;
     if (typeof arg === 'number') {
       return this.transformPosition(arg, priority);
@@ -670,7 +670,11 @@ class Delta {
         }
       }
     }
-    return delta.chop();
+    if (chop) {
+      return delta.chop()
+    } else {
+      return delta;
+    }
   }
 
   transformPosition(index: number, priority: boolean = false): number {
