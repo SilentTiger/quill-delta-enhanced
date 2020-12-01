@@ -621,7 +621,7 @@ class Delta {
     const thisIter = Op.iterator(this.ops);
     const otherIter = Op.iterator(other.ops);
     const delta = new Delta();
-    while (thisIter.hasNext() || otherIter.hasNext()) {
+    while (otherIter.hasNext()) {
       if (
         thisIter.peekType() === 'insert' &&
         (priority || otherIter.peekType() !== 'insert')
